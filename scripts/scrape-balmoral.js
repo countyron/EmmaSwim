@@ -12,14 +12,37 @@ const SERIES = (CONFIG.series || []).map(s => ({
 
 function clean(s){ return (s || '').replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim(); }
 function normaliseName(s){ return clean(s).toLowerCase().replace(/\s*,\s*/g, ', '); }
+
 function toIsoFromHeader(label){
-  const m = clean(label).match(/([A-Z][a-z]{2})\s*(\d{1,2})/);
+  const text = clean(label);
+
+  // Only accept real date-style column headings, e.g. "May 2", "Jun 14", "Sep 27".
+  const m = text.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\b/);
   if(!m) return null;
-  const months = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
-  const month = months[m[1]]; const day = Number(m[2]);
+
+  const months = {
+    Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5,
+    Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11
+  };
+
+  const month = months[m[1]];
+  const day = Number(m[2]);
+
+  // Guard against invalid months/days or accidental non-date headings.
+  if(month === undefined || !Number.isFinite(day) || day < 1 || day > 31) {
+    return null;
+  }
+
   const year = month >= 9 ? SEASON : SEASON + 1;
-  return new Date(Date.UTC(year, month, day)).toISOString().slice(0,10);
+  const d = new Date(Date.UTC(year, month, day));
+
+  if(Number.isNaN(d.getTime())) {
+    return null;
+  }
+
+  return d.toISOString().slice(0,10);
 }
+
 function parsePaceSeconds(value){
   const v = clean(value); if(!v) return null;
   const m = v.match(/^(\d+):(\d{1,2})(?:\.(\d+))?$/);
